@@ -2,6 +2,8 @@
 
 fastvpn is a quickly vpn installer base on aws ec2.
 
+[![Build Status](https://travis-ci.org/Jamlee/fastvpn.svg?branch=master)](https://travis-ci.org/Jamlee/fastvpn)
+
 ## Usage
 
 ### Step 1
