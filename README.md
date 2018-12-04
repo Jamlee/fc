@@ -14,6 +14,9 @@ aws_access_key_id = AKIAIwe4fQ64OT5G23LN2Q                          # your aws_a
 aws_secret_access_key = o397+vZrTSgVANAq323UkKTp/ckkOKFYQ8nONYQ1E   # your aws_secret_access_key
 ```
 
+### Step 2
+
+run the command `fastvpn start`
 
 ```
 NAME:
