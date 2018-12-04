@@ -19,9 +19,9 @@ import (
 const region = "us-east-2"
 const instanceName = "fastvpn"
 const command = `
-	echo "deb [trusted=yes] http://shadowvpn.org/debian wheezy main" >> /etc/apt/sources.list
-	apt-get update && apt-get install shadowvpn -y
-	service shadowvpn restart
+	sudo echo "deb [trusted=yes] http://shadowvpn.org/debian wheezy main" >> /etc/apt/sources.list
+	sudo apt-get update && sudo apt-get install shadowvpn -y
+	sudo service shadowvpn restart
 `
 
 var svc *ec2.EC2
