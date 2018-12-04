@@ -1,3 +1,3 @@
-# One Key Vpn
+# fastvpn
 
-one key vpn is a quickly vpn installer base on aws ec2.
+fastvpn is a quickly vpn installer base on aws ec2.
