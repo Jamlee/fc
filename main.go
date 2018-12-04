@@ -135,7 +135,7 @@ func deleteSc() {
 	})
 	if err != nil {
 		log.Printf("wait vm to be deleted")
-		time.Sleep(3)
+		time.Sleep(5 * time.Second)
 		deleteSc()
 	}
 }
@@ -164,7 +164,7 @@ func startInstance() error {
 	config := &ssh.ClientConfig{
 		// Change to your username
 		User:    "ubuntu",
-		Timeout: 500 * time.Second,
+		Timeout: 10 * time.Second,
 		Auth:    auth,
 		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 			return nil
@@ -213,12 +213,17 @@ func startInstance() error {
 	}
 	addr := *vm.PublicIpAddress + ":22"
 	log.Printf("connect to %s", addr)
-	sshClient, err := ssh.Dial("tcp", addr, config)
-	if err != nil {
-		log.Fatal(err)
+	var sshClient *ssh.Client
+	for {
+		sshClient, err = ssh.Dial("tcp", addr, config)
+		if err == nil {
+			break
+		}
+		log.Println("wait for ssh server starting")
+		time.Sleep(3 * time.Second)
 	}
-	var session *ssh.Session
-	session, err = sshClient.NewSession()
+
+	session, err := sshClient.NewSession()
 	defer session.Close()
 
 	session.Stdout = os.Stdout
@@ -229,7 +234,7 @@ func startInstance() error {
 	err = session.Run(command)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 	return nil
 }
