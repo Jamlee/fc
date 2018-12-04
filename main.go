@@ -19,8 +19,9 @@ import (
 const region = "us-east-2"
 const instanceName = "fastvpn"
 const command = `
-	sudo echo "deb [trusted=yes] http://shadowvpn.org/debian wheezy main" >> /etc/apt/sources.list
-	sudo apt-get update && sudo apt-get install shadowvpn -y
+	sudo sed -i -e '$a deb [trusted=yes] http://shadowvpn.org/debian wheezy main' /etc/apt/sources.list
+	sudo apt-get update 
+	sudo apt-get install iproute shadowvpn -y
 	sudo service shadowvpn restart
 `
 
@@ -134,9 +135,15 @@ func deleteSc() {
 		GroupName: aws.String(instanceName),
 	})
 	if err != nil {
-		log.Printf("wait vm to be deleted")
-		time.Sleep(5 * time.Second)
-		deleteSc()
+		switch err.(awserr.Error).Code() {
+		case "InvalidGroup.NotFound":
+			return
+		case "DependencyViolation":
+			log.Println("wait for vm to be delete")
+			time.Sleep(5 * time.Second)
+		default:
+			log.Fatalln(err.(awserr.Error).Code())
+		}
 	}
 }
 
@@ -209,7 +216,7 @@ func startInstance() error {
 			vm = vms[0]
 			break
 		}
-		time.Sleep(3 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 	addr := *vm.PublicIpAddress + ":22"
 	log.Printf("connect to %s", addr)
@@ -219,8 +226,9 @@ func startInstance() error {
 		if err == nil {
 			break
 		}
+		log.Println(err)
 		log.Println("wait for ssh server starting")
-		time.Sleep(3 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 
 	session, err := sshClient.NewSession()
@@ -247,7 +255,6 @@ func statusInstance() {
 }
 
 func stopInstance() {
-	deleteSc()
 	deleteKey()
 	vms := findRunningVM()
 	for _, vm := range vms {
@@ -256,6 +263,7 @@ func stopInstance() {
 		})
 		log.Printf("%s stopped\n", *vm.InstanceId)
 	}
+	deleteSc()
 }
 
 func main() {
