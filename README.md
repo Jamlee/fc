@@ -4,7 +4,7 @@ fastvpn is a quickly vpn installer base on aws ec2.
 
 ## Usage
 
-###1 Step 1
+### Step 1
 
 create the file `~/.aws/credentials`
 
