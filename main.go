@@ -269,6 +269,7 @@ func stopInstance() {
 func main() {
 	app := cli.NewApp()
 	app.Usage = "creating a vpn server fastly"
+	app.Version = "0.0.1"
 	app.Commands = []cli.Command{
 		{
 			Name:  "start",
