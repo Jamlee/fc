@@ -21,7 +21,7 @@ const instanceName = "fastvpn"
 const command = `
 	sudo sed -i -e '$a deb [trusted=yes] http://shadowvpn.org/debian wheezy main' /etc/apt/sources.list
 	sudo apt-get update 
-	sudo apt-get install iproute shadowvpn -y
+	sudo apt-get install iproute2 shadowvpn -y
 	sudo service shadowvpn restart
 `
 
