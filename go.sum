@@ -1,3 +1,4 @@
+github.com/Jamlee/fastvpn v0.0.0-20190310044115-7196afda01bf h1:mCAHjZXSWzjbcjNrst3+hG0x9u/LVwe3kgZOhCIKcbk=
 github.com/aws/aws-sdk-go v1.15.88 h1:Om0MayFrixOds/PrbBey2Cg/lkNEIyOrAF2RFXLwmnE=
 github.com/aws/aws-sdk-go v1.15.88/go.mod h1:es1KtYUFs7le0xQ3rOihkuoVD90z7D0fR2Qm4S00/gU=
 github.com/jmespath/go-jmespath v0.0.0-20160202185014-0b12d6b521d8 h1:12VvqtR6Aowv3l/EQUlocDHW2Cp4G9WJVH7uyH8QFJE=
@@ -8,7 +9,11 @@ github.com/mattn/go-colorable v0.0.9 h1:UVL0vNpWh04HeJXV0KLcaT7r06gOH2l4OW6ddYRU
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
 github.com/mattn/go-isatty v0.0.4 h1:bnP0vzxcAdeI1zdubAl5PjU6zsERjGZb7raWodagDYs=
 github.com/mattn/go-isatty v0.0.4/go.mod h1:M+lRXTBqGeGNdLjl/ufCoiOlB5xdOkqRJdNxMWT7Zi4=
+github.com/songgao/water v0.0.0-20190112225332-f6122f5b2fbd h1:vpFVSP90n7zcgDvZUJ83nrfzU5OX5NJx6fpnqe7+EwA=
+github.com/songgao/water v0.0.0-20190112225332-f6122f5b2fbd/go.mod h1:P5HUIBuIWKbyjl083/loAegFkfbFNx5i2qEP4CNbm7E=
 github.com/urfave/cli v1.20.0 h1:fDqGv3UG/4jbVl/QkFwEdddtEDjh/5Ov6X+0B/3bPaw=
 github.com/urfave/cli v1.20.0/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijbERA=
 golang.org/x/crypto v0.0.0-20181203042331-505ab145d0a9 h1:mKdxBk7AujPs8kU4m80U72y/zjbZ3UcXC7dClwKbUI0=
 golang.org/x/crypto v0.0.0-20181203042331-505ab145d0a9/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
+golang.org/x/sys v0.0.0-20190318195719-6c81ef8f67ca h1:o2TLx1bGN3W+Ei0EMU5fShLupLmTOU95KvJJmfYhAzM=
+golang.org/x/sys v0.0.0-20190318195719-6c81ef8f67ca/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=

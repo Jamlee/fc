@@ -7,7 +7,7 @@ fastvpn is a quickly vpn installer base on aws ec2.
 
 ## Usage
 
-### Step 1
+### config the aws token
 
 create the file `~/.aws/credentials`
 
@@ -17,7 +17,7 @@ aws_access_key_id = AKIAIwe4fQ64OT5G23LN2Q                          # your aws_a
 aws_secret_access_key = o397+vZrTSgVANAq323UkKTp/ckkOKFYQ8nONYQ1E   # your aws_secret_access_key
 ```
 
-### Step 2
+### start the vpn env
 
 run the command `fastvpn start`
 
@@ -41,3 +41,4 @@ GLOBAL OPTIONS:
    --help, -h     show help
    --version, -v  print the version
 ```
+
