@@ -1,11 +1,14 @@
-# fastvpn
+# Fastvpn
 
-fastvpn is quickly to start for use and no use no paid for `aws`.
+fastvpn can be quickly to start and save your money.
 
 [![Build Status](https://travis-ci.org/Jamlee/fastvpn.svg?branch=master)](https://travis-ci.org/Jamlee/fastvpn)
 [![CodeFactor](https://www.codefactor.io/repository/github/jamlee/fastvpn/badge)](https://www.codefactor.io/repository/github/jamlee/fastvpn)
 
-With fastvpn, paying for aws when you using vpn, it is extraly save your money for securely network.
+## Features
+
+- Paying for ec2 when only you using fastvpn
+- encrypted data transfer
 
 ## Usage
 
