@@ -14,9 +14,21 @@ func main() {
 	app.Version = "0.2.0"
 	app.Commands = []cli.Command{
 		{
-			Name:  "start",
-			Usage: "start the vpn server and connect to the vpn",
+			Name:  "server",
+			Usage: "start the vpn server service",
 			Action: func(c *cli.Context) error {
+				// start the vpn server
+				// upload the vpn server program
+				// start the vpn
+				vpn.NewServer("127.0.0.1", "9000", "0.0.0.0/8", "tun0")
+				return nil
+			},
+		},
+		{
+			Name:  "start",
+			Usage: "start the vpn client",
+			Action: func(c *cli.Context) error {
+				// run in the local host
 				vpn.NewServer("127.0.0.1", "9000", "0.0.0.0/8", "tun0")
 				return nil
 			},

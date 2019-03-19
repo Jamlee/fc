@@ -16,7 +16,7 @@ func SetInterfaceStatus(iName string, up bool, debug bool) error {
 	if up {
 		statusString = "up"
 	}
-	sargs := fmt.Sprintf("link set dev %s %s mtu %d qlen %d", iName, statusString, devMtuSize, devTxQueLen)
+	sargs := fmt.Sprintf("link set dev %s %s mtu %d qlen %d", iName, statusString, tunMtuSize, tunTxQueLen)
 	args := strings.Split(sargs, " ")
 	return commandExec("ip", args, debug)
 }

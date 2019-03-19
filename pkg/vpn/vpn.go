@@ -13,30 +13,31 @@ import (
 )
 
 const (
-	PacketInMaxBuff        = 150
-	PacketOutMaxBuff       = 150
-	devMtuSize             = 1500
-	devPktBuffSize         = 4096
-	devTxQueLen            = 300
-	servMaxInboundPktQueue = 400
-	servPerClientPktQueue  = 200
+	PacketInMaxBuff           = 150
+	PacketOutMaxBuff          = 150
+	tunMtuSize                = 1500
+	tunPacketBuffSize         = 4096
+	tunTxQueLen               = 300
+	servMaxInboundPacketQueue = 400
+	servPerClientPacketQueue  = 200
 
 	// for connection
-	PktUnknown PktType = iota
-	PktIPPkt
-	PktLocalAddr
+	PacketUnknown PacketType = iota
+	PacketIP
+	PacketLocalAddr
 )
 
-type PktType byte
-type OutBoundIPPacket InBoundIPPacket
+type PacketType byte
 
+// packet represention
 type RawIPPacket struct {
 	Raw      []byte
 	Dest     net.IP
 	Protocol waterutil.IPProtocol
 }
 
-type InBoundIPPacket struct {
+// packet read from internet in server side
+type NetInBoundIPPacket struct {
 	packet   *RawIPPacket
 	clientID int
 }
@@ -50,11 +51,12 @@ type Server struct {
 	clients           map[int]*ServerConn
 	clientsLock       sync.Mutex
 
-	inboundIPPkts chan *InBoundIPPacket
+	// packet read from device like eth0
+	netInboundIPPackets chan *NetInBoundIPPacket
 
-	// add encrypetd packet
-	inboundEncryptedPkts  chan *RawIPPacket
-	outboundEncryptedPkts chan *RawIPPacket
+	// tun device inbound and outbound
+	tunInboundIPPackets  chan *RawIPPacket
+	tunOutboundIPPackets chan *RawIPPacket
 
 	tunInterface *water.Interface
 	rm           RouterManager
@@ -65,7 +67,7 @@ type Server struct {
 type ServerConn struct {
 	id               int
 	conn             net.Conn
-	outBoundIPPacket chan *OutBoundIPPacket
+	outBoundIPPacket chan *RawIPPacket
 	canSendIP        bool
 	remoteAddrs      []net.IP
 	connectionOk     bool
@@ -93,15 +95,15 @@ func NewServer(listenHost, listenPort, network, iName string) (*Server, error) {
 	}
 	log.Printf("created  vpn iface %s\n", tunInterface.Name())
 	s := &Server{
-		tunInterface:          tunInterface,
-		localAddr:             netIP,
-		localNetMask:          localNetMask,
-		inboundIPPkts:         make(chan *InBoundIPPacket, servMaxInboundPktQueue),
-		inboundEncryptedPkts:  make(chan *RawIPPacket, PacketInMaxBuff),
-		outboundEncryptedPkts: make(chan *RawIPPacket, PacketOutMaxBuff),
-		clientIDByAddress:     map[string]int{},
-		clients:               map[int]*ServerConn{},
-		lastClientID:          0,
+		tunInterface:         tunInterface,
+		localAddr:            netIP,
+		localNetMask:         localNetMask,
+		netInboundIPPackets:  make(chan *NetInBoundIPPacket, servMaxInboundPacketQueue),
+		tunInboundIPPackets:  make(chan *RawIPPacket, PacketInMaxBuff),
+		tunOutboundIPPackets: make(chan *RawIPPacket, PacketOutMaxBuff),
+		clientIDByAddress:    map[string]int{},
+		clients:              map[int]*ServerConn{},
+		lastClientID:         0,
 	}
 	return nil, s.Init(listenHost + ":" + listenPort)
 }
@@ -115,6 +117,13 @@ func (s *Server) Init(addr string) (err error) {
 		return err
 	}
 	return nil
+}
+
+func (s *Server) Run() {
+	go s.acceptRoutine()
+	go s.dispatchRoutine()
+	go tunWriteRoutine(s.tunInterface, s.tunOutboundIPPackets, &s.wg, &s.isShuttingDown)
+	go tunReadRoutine(s.tunInterface, s.tunInboundIPPackets, &s.wg, &s.isShuttingDown)
 }
 
 func (s *Server) acceptRoutine() {
@@ -135,6 +144,42 @@ func (s *Server) acceptRoutine() {
 			return
 		}
 		s.handleClient(conn)
+	}
+}
+
+func (s *Server) dispatchRoutine() {
+	for !s.isShuttingDown {
+		select {
+		case pkt := <-s.netInboundIPPackets:
+			//log.Printf("Got packet from NET: %s-%d len %d\n", pkt.pkt.Dest, pkt.clientID, len(pkt.pkt.Raw))
+			s.route(pkt.packet)
+		case pkt := <-s.tunInboundIPPackets:
+			//log.Printf("Got packet from DEV: %s len %d\n", pkt.Dest, len(pkt.Raw))
+			s.route(pkt)
+		}
+	}
+}
+
+func (s *Server) route(pkt *RawIPPacket) {
+	if pkt.Dest.IsMulticast() { //Don't forward multicast
+		return
+	}
+
+	s.clientsLock.Lock()
+	destClientID, canRouteDirectly := s.clientIDByAddress[pkt.Dest.String()]
+	if canRouteDirectly {
+		destClient, clientExists := s.clients[destClientID]
+		if clientExists {
+			destClient.queueIP(pkt)
+			//log.Println("Routing to CLIENT")
+		} else {
+			log.Printf("WARN: Attempted to route packet to clientID %d, which does not exist. Dropping.\n", destClientID)
+		}
+	}
+	s.clientsLock.Unlock()
+	if !canRouteDirectly {
+		s.tunOutboundIPPackets <- pkt
+		//log.Println("Routing to DEV")
 	}
 }
 
@@ -186,11 +231,11 @@ func (s *Server) removeClientConn(id int) {
 /////////////////////////////////////////////////////////////////////////////////////////
 
 func (c *ServerConn) initClient(s *Server) {
-	c.outBoundIPPacket = make(chan *OutBoundIPPacket, servPerClientPktQueue)
+	c.outBoundIPPacket = make(chan *RawIPPacket, servPerClientPacketQueue)
 	c.connectionOk = true
 	c.server = s
 	log.Printf("New connection from %s (%d)\n", c.conn.RemoteAddr().String(), c.id)
-	go c.readRoutine(&s.isShuttingDown, s.inboundIPPkts)
+	go c.readRoutine(&s.isShuttingDown, s.netInboundIPPackets)
 	go c.writeRoutine(&s.isShuttingDown)
 }
 
@@ -199,7 +244,7 @@ func (c *ServerConn) writeRoutine(isShuttingDown *bool) {
 	for !*isShuttingDown && c.connectionOk {
 		select {
 		case pkt := <-c.outBoundIPPacket:
-			encoder.Encode(PktIPPkt)
+			encoder.Encode(PacketIP)
 			err := encoder.Encode(pkt)
 			if err != nil {
 				log.Printf("Write error for %s: %s\n", c.conn.RemoteAddr().String(), err.Error())
@@ -210,12 +255,12 @@ func (c *ServerConn) writeRoutine(isShuttingDown *bool) {
 	}
 }
 
-func (c *ServerConn) readRoutine(isShuttingDown *bool, ipPacketSink chan *InBoundIPPacket) {
+func (c *ServerConn) readRoutine(isShuttingDown *bool, ipPacketSink chan *NetInBoundIPPacket) {
 	decoder := gob.NewDecoder(c.conn)
 
 	for !*isShuttingDown && c.connectionOk {
-		var pktType PktType
-		err := decoder.Decode(&pktType)
+		var PacketType PacketType
+		err := decoder.Decode(&PacketType)
 		if err != nil {
 			if !*isShuttingDown {
 				log.Printf("Client read error: %s\n", err.Error())
@@ -224,8 +269,8 @@ func (c *ServerConn) readRoutine(isShuttingDown *bool, ipPacketSink chan *InBoun
 			return
 		}
 
-		switch pktType {
-		case PktLocalAddr:
+		switch PacketType {
+		case PacketLocalAddr:
 			var localAddr net.IP
 			err := decoder.Decode(&localAddr)
 			if err != nil {
@@ -236,7 +281,7 @@ func (c *ServerConn) readRoutine(isShuttingDown *bool, ipPacketSink chan *InBoun
 			c.remoteAddrs = append(c.remoteAddrs, localAddr)
 			c.server.setAddrForClient(c.id, localAddr)
 
-		case PktIPPkt:
+		case PacketIP:
 			var ipPkt RawIPPacket
 			err := decoder.Decode(&ipPkt)
 			if err != nil {
@@ -245,12 +290,12 @@ func (c *ServerConn) readRoutine(isShuttingDown *bool, ipPacketSink chan *InBoun
 				return
 			}
 			//log.Printf("Packet Received from %d: dest %s, len %d\n", c.id, ipPkt.Dest.String(), len(ipPkt.Raw))
-			ipPacketSink <- &InBoundIPPacket{packet: &ipPkt, clientID: c.id}
+			ipPacketSink <- &NetInBoundIPPacket{packet: &ipPkt, clientID: c.id}
 		}
 	}
 }
 
-func (c *ServerConn) queueIP(pkt *OutBoundIPPacket) {
+func (c *ServerConn) queueIP(pkt *RawIPPacket) {
 	select {
 	case c.outBoundIPPacket <- pkt:
 	default:
@@ -271,4 +316,51 @@ func (c *ServerConn) hadError(errInRead bool) {
 	}
 	c.connectionOk = false
 	c.server.removeClientConn(c.id)
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+//
+//  utils
+//
+/////////////////////////////////////////////////////////////////////////////////////////
+
+func tunReadRoutine(dev *water.Interface, packetsIn chan *RawIPPacket, wg *sync.WaitGroup, isShuttingDown *bool) {
+	wg.Add(1)
+	defer wg.Done()
+
+	for !*isShuttingDown {
+		packet := make([]byte, tunPacketBuffSize)
+		n, err := dev.Read(packet)
+		if err != nil {
+			if !*isShuttingDown {
+				log.Printf("%s read err: %s\n", dev.Name(), err.Error())
+			}
+			close(packetsIn)
+			return
+		}
+		p := &RawIPPacket{
+			Raw:      packet[:n],
+			Dest:     waterutil.IPv4Destination(packet[:n]),
+			Protocol: waterutil.IPv4Protocol(packet[:n]),
+		}
+		packetsIn <- p
+		//log.Printf("Packet Received: dest %s, len %d\n", p.Dest.String(), len(p.Raw))
+	}
+}
+
+func tunWriteRoutine(dev *water.Interface, packetsOut chan *RawIPPacket, wg *sync.WaitGroup, isShuttingDown *bool) {
+	wg.Add(1)
+	defer wg.Done()
+
+	for !*isShuttingDown {
+		pkt := <-packetsOut
+		w, err := dev.Write(pkt.Raw)
+		if err != nil {
+			log.Printf("Write to %s failed: %s\n", dev.Name(), err.Error())
+			return
+		}
+		if w != len(pkt.Raw) {
+			log.Printf("WARN: Write to %s has mismatched len: %d != %d\n", dev.Name(), w, len(pkt.Raw))
+		}
+	}
 }

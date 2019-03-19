@@ -7,7 +7,7 @@ fastvpn can be quickly to start and save your money.
 
 ## Features
 
-- Paying for ec2 when only you using fastvpn
+- paying for ec2 when only you using fastvpn
 - encrypted data transfer
 
 ## Usage
