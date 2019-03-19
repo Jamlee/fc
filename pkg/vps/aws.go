@@ -146,6 +146,7 @@ func deleteSc() {
 	}
 }
 
+// create and start the interface
 func StartInstance() error {
 	// clear
 	vms := findRunningVM()
@@ -246,6 +247,7 @@ func StartInstance() error {
 	return nil
 }
 
+// get vm running status
 func StatusInstance() {
 	vms := findRunningVM()
 	for _, vm := range vms {
@@ -253,6 +255,7 @@ func StatusInstance() {
 	}
 }
 
+// stio and delete interface
 func StopInstance() {
 	deleteKey()
 	vms := findRunningVM()
