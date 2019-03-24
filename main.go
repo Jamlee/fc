@@ -25,8 +25,8 @@ func main() {
 			},
 		},
 		{
-			Name:  "start",
-			Usage: "start the vpn client",
+			Name:  "start-with-deploy",
+			Usage: "deploy the vpn server and start the vpn client ",
 			Action: func(c *cli.Context) error {
 				// run in the local host
 				vpn.NewServer("127.0.0.1", "9000", "0.0.0.0/8", "tun0")
