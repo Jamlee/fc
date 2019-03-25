@@ -2,10 +2,8 @@ package vpn
 
 import (
 	"errors"
-	"log"
 	"math/rand"
 	"net"
-	"os/exec"
 	"time"
 )
 
@@ -20,16 +18,4 @@ func hostToIP(addr string) (net.IP, error) {
 
 	rand.Seed(time.Now().Unix())
 	return addrs[rand.Int()%len(addrs)], nil
-}
-
-func commandExec(command string, args []string, debug bool) error {
-	cmd := exec.Command(command, args...)
-	if debug {
-		log.Println("exec "+command+": ", args)
-	}
-	e := cmd.Run()
-	if e != nil {
-		log.Println("Command failed: ", e)
-	}
-	return e
 }
