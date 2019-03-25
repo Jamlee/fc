@@ -4,45 +4,69 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"fmt"
 	"net"
 	"os"
 	"strconv"
-	"strings"
+
+	"github.com/vishvananda/netlink"
 )
 
 func SetInterfaceStatus(iName string, up bool, debug bool) error {
-	statusString := "down"
-	if up {
-		statusString = "up"
+	link, err := netlink.LinkByName(iName)
+	if err != nil {
+		if up {
+			netlink.LinkSetUp(link)
+		} else {
+			netlink.LinkSetDown(link)
+		}
 	}
-	sargs := fmt.Sprintf("link set dev %s %s mtu %d qlen %d", iName, statusString, tunMtuSize, tunTxQueLen)
-	args := strings.Split(sargs, " ")
-	return commandExec("ip", args, debug)
+	return err
 }
 
-func SetDevIP(iName string, localAddr net.IP, addr *net.IPNet, debug bool) error {
-	sargs := fmt.Sprintf("%s %s netmask %s", iName, localAddr.String(), net.IP(addr.Mask).String())
-	args := strings.Split(sargs, " ")
-	return commandExec("ifconfig", args, debug)
+func SetDevIP(iName string, addrWithNetmask string, debug bool) error {
+	addr, err := netlink.ParseAddr(addrWithNetmask)
+	if err != nil {
+		return err
+	}
+	link, err := netlink.LinkByName(iName)
+	if err == nil {
+		netlink.AddrAdd(link, addr)
+	}
+	return err
 }
 
 func SetDefaultGateway(gw, iName string, debug bool) error {
-	sargs := fmt.Sprintf("add default gw %s dev %s", gw, iName)
-	args := strings.Split(sargs, " ")
-	return commandExec("route", args, debug)
+	link, err := netlink.LinkByName(iName)
+	if err != nil {
+		return err
+	}
+	dst := &net.IPNet{
+		IP:   net.IPv4(0, 0, 0, 0),
+		Mask: net.CIDRMask(0, 32),
+	}
+	route := netlink.Route{LinkIndex: link.Attrs().Index, Dst: dst}
+	err = netlink.RouteAdd(&route)
+	return err
 }
 
 func AddRoute(addr, viaAddr net.IP, iName string, debug bool) error {
-	sargs := fmt.Sprintf("add %s gw %s dev %s", addr.String(), viaAddr.String(), iName)
-	args := strings.Split(sargs, " ")
-	return commandExec("route", args, debug)
+	link, err := netlink.LinkByName(iName)
+	if err != nil {
+		return err
+	}
+	route := netlink.Route{LinkIndex: link.Attrs().Index, Src: addr, Gw: viaAddr}
+	err = netlink.RouteAdd(&route)
+	return err
 }
 
 func DelRoute(addr, viaAddr net.IP, iName string, debug bool) error {
-	sargs := fmt.Sprintf("del %s gw %s dev %s", addr.String(), viaAddr.String(), iName)
-	args := strings.Split(sargs, " ")
-	return commandExec("route", args, debug)
+	link, err := netlink.LinkByName(iName)
+	if err != nil {
+		return err
+	}
+	route := netlink.Route{LinkIndex: link.Attrs().Index, Src: addr, Gw: viaAddr}
+	err = netlink.RouteDel(&route)
+	return err
 }
 
 func GetNetGateway() (gw, dev string, err error) {

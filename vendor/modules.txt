@@ -36,6 +36,11 @@ github.com/songgao/water
 github.com/songgao/water/waterutil
 # github.com/urfave/cli v1.20.0
 github.com/urfave/cli
+# github.com/vishvananda/netlink v1.0.0
+github.com/vishvananda/netlink
+github.com/vishvananda/netlink/nl
+# github.com/vishvananda/netns v0.0.0-20180720170159-13995c7128cc
+github.com/vishvananda/netns
 # golang.org/x/crypto v0.0.0-20181203042331-505ab145d0a9
 golang.org/x/crypto/ssh
 golang.org/x/crypto/curve25519
@@ -46,4 +51,5 @@ golang.org/x/crypto/ed25519/internal/edwards25519
 golang.org/x/crypto/internal/subtle
 # golang.org/x/sys v0.0.0-20190318195719-6c81ef8f67ca
 golang.org/x/sys/windows/registry
+golang.org/x/sys/unix
 golang.org/x/sys/windows

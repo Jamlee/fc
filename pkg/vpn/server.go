@@ -2,7 +2,6 @@ package vpn
 
 import (
 	"encoding/gob"
-	"errors"
 	"log"
 	"net"
 	"sync"
@@ -67,9 +66,8 @@ type ClientConnsManager struct {
 }
 
 type Server struct {
-	listener     net.Listener
-	localAddr    net.IP
-	localNetMask *net.IPNet
+	listener        net.Listener
+	addrWithNetmask string
 
 	// packet read from device like eth0
 	clientInBoundIPPackets chan *ClientInBoundIPPacket
@@ -103,11 +101,8 @@ type ServerConn struct {
 //
 /////////////////////////////////////////////////////////////////////////////////////////
 
-func NewServer(listenHost, listenPort, network, iName string) (*Server, error) {
-	netIP, localNetMask, err := net.ParseCIDR(network)
-	if err != nil {
-		return nil, errors.New("invalid network address/mask - " + err.Error())
-	}
+// network is a format string like`192.168.33.1`
+func NewServer(listenHost, listenPort, addrWithNetmask, iName string) (*Server, error) {
 	config := water.Config{
 		DeviceType: water.TUN,
 	}
@@ -119,8 +114,7 @@ func NewServer(listenHost, listenPort, network, iName string) (*Server, error) {
 	log.Printf("created  vpn iface %s\n", tunInterface.Name())
 	s := &Server{
 		tunInterface:           tunInterface,
-		localAddr:              netIP,
-		localNetMask:           localNetMask,
+		addrWithNetmask:        addrWithNetmask,
 		clientInBoundIPPackets: make(chan *ClientInBoundIPPacket, servMaxInboundPacketQueue),
 		tunInboundIPPackets:    make(chan *RawIPPacket, PacketInMaxBuff),
 		tunOutboundIPPackets:   make(chan *RawIPPacket, PacketOutMaxBuff),
@@ -138,7 +132,7 @@ func (s *Server) Init(addr string) (err error) {
 	if err != nil {
 		return err
 	}
-	if err = SetDevIP(s.tunInterface.Name(), s.localAddr, s.localNetMask, false); err != nil {
+	if err = SetDevIP(s.tunInterface.Name(), s.addrWithNetmask, false); err != nil {
 		return err
 	}
 	return nil

@@ -25,7 +25,7 @@ func main() {
 			},
 		},
 		{
-			Name:  "start-with-deploy",
+			Name:  "run",
 			Usage: "deploy the vpn server and start the vpn client ",
 			Action: func(c *cli.Context) error {
 				// run in the local host
