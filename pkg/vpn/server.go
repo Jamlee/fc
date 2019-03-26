@@ -262,7 +262,7 @@ func (c *ServerConn) initClient(s *Server) {
 	c.outBoundIPPacket = make(chan *RawIPPacket, servPerClientPacketQueue)
 	c.connectionOk = true
 	c.server = s
-	log.Infof("New connection from %s (%d)", c.conn.RemoteAddr().String(), c.id)
+	log.Infof("New connection from %s, conn id: %d", c.conn.RemoteAddr().String(), c.id)
 	go c.readRoutine(&s.isShuttingDown, s.clientInBoundIPPackets)
 	go c.writeRoutine(&s.isShuttingDown)
 }

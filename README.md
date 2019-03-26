@@ -10,6 +10,12 @@ fastvpn can be quickly to start and save your money.
 - paying for ec2 when only you using fastvpn
 - encrypted data transfer
 
+
+## How Vpn work
+
+
+
+
 ## Usage
 
 ### 1. config the aws token
@@ -25,6 +31,8 @@ aws_secret_access_key = o397+vZrTSgVANAq323UkKTp/ckkOKFYQ8nONYQ1E   # your aws_s
 ### 2. start the vpn env
 
 run the command `fastvpn start`
+
+
 
 
 ## Change Logs

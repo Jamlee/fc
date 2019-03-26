@@ -17,10 +17,18 @@ func main() {
 			Name:  "server",
 			Usage: "start the vpn server service",
 			Action: func(c *cli.Context) error {
-				// start the vpn server
-				// upload the vpn server program
-				// start the vpn
-				server, err := vpn.NewServer("0.0.0.0", "9001", "192.168.45.1/24", "tun0")
+				server, err := vpn.NewServer("0.0.0.0", "9001", "192.168.45.1/24", "tun1")
+				if err == nil {
+					server.Run()
+				}
+				return err
+			},
+		},
+		{
+			Name:  "client",
+			Usage: "start the vpn client service",
+			Action: func(c *cli.Context) error {
+				server, err := vpn.NewServer("0.0.0.0", "9001", "192.168.45.1/24", "tun1")
 				if err == nil {
 					server.Run()
 				}
@@ -31,8 +39,6 @@ func main() {
 			Name:  "run",
 			Usage: "deploy the vpn server and start the vpn client ",
 			Action: func(c *cli.Context) error {
-				// run in the local host
-				vpn.NewServer("127.0.0.1", "9000", "0.0.0.0/8", "tun0")
 				return nil
 			},
 		},
