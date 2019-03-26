@@ -165,8 +165,10 @@ func (s *Server) acceptRoutine() {
 		}
 		conn, err := s.listener.Accept()
 		if err != nil {
-			if s.isShuttingDown {
-				log.Infof("Listener err: %s", err.Error())
+			if !s.isShuttingDown {
+				if !err.(net.Error).Timeout() {
+					log.Infof("Listener err: %s", err.Error())
+				}
 			}
 		} else {
 			s.handleClient(conn)
