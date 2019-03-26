@@ -2,14 +2,16 @@ package vpn
 
 import (
 	"encoding/gob"
-	"log"
 	"net"
 	"sync"
 	"time"
 
+	zapLog "github.com/Jamlee/fastvpn/pkg/log"
 	"github.com/songgao/water"
 	"github.com/songgao/water/waterutil"
 )
+
+var log = zapLog.LOG
 
 const (
 	PacketInMaxBuff  = 150
@@ -109,9 +111,9 @@ func NewServer(listenHost, listenPort, addrWithNetmask, iName string) (*Server, 
 	config.Name = iName
 	tunInterface, err := water.New(config)
 	if err != nil {
-		log.Fatalf("can not created  vpn iface %s\n", iName)
+		log.Fatalf("can not created  vpn iface %s", iName)
 	}
-	log.Printf("created  vpn iface %s\n", tunInterface.Name())
+	log.Infof("created  vpn iface %s", tunInterface.Name())
 	s := &Server{
 		tunInterface:           tunInterface,
 		addrWithNetmask:        addrWithNetmask,
@@ -122,13 +124,15 @@ func NewServer(listenHost, listenPort, addrWithNetmask, iName string) (*Server, 
 			clientIDByAddress: map[string]int{},
 			clients:           map[int]*ServerConn{},
 		},
-		lastClientID: 0,
+		lastClientID:   1,
+		isShuttingDown: false,
 	}
-	return nil, s.Init(listenHost + ":" + listenPort)
+	return s, s.Init(listenHost + ":" + listenPort)
 }
 
 func (s *Server) Init(addr string) (err error) {
 	s.listener, err = net.Listen("tcp", addr)
+	log.Infof("server serve on: %s ", addr)
 	if err != nil {
 		return err
 	}
@@ -139,10 +143,14 @@ func (s *Server) Init(addr string) (err error) {
 }
 
 func (s *Server) Run() {
+	// TODO: to exit server gracefully
+	defer s.wg.Done()
+	s.wg.Add(1)
 	go s.acceptRoutine()
 	go s.dispatchRoutine()
 	go tunWriteRoutine(s.tunInterface, s.tunOutboundIPPackets, &s.wg, &s.isShuttingDown)
 	go tunReadRoutine(s.tunInterface, s.tunInboundIPPackets, &s.wg, &s.isShuttingDown)
+	s.wg.Wait()
 }
 
 func (s *Server) acceptRoutine() {
@@ -157,12 +165,12 @@ func (s *Server) acceptRoutine() {
 		}
 		conn, err := s.listener.Accept()
 		if err != nil {
-			if !s.isShuttingDown {
-				log.Printf("Listener err: %s\n", err.Error())
+			if s.isShuttingDown {
+				log.Infof("Listener err: %s", err.Error())
 			}
-			return
+		} else {
+			s.handleClient(conn)
 		}
-		s.handleClient(conn)
 	}
 }
 
@@ -188,7 +196,7 @@ func (s *Server) routeToClient(pkt *RawIPPacket) {
 		if clientExists {
 			destClient.writeToClient(pkt)
 		} else {
-			log.Printf("WARN: Attempted to route packet to clientID %d, which does not exist. Dropping.\n", destClientID)
+			log.Infof("WARN: Attempted to route packet to clientID %d, which does not exist. Dropping.", destClientID)
 		}
 	}
 	s.cm.clientsLock.Unlock()
@@ -252,7 +260,7 @@ func (c *ServerConn) initClient(s *Server) {
 	c.outBoundIPPacket = make(chan *RawIPPacket, servPerClientPacketQueue)
 	c.connectionOk = true
 	c.server = s
-	log.Printf("New connection from %s (%d)\n", c.conn.RemoteAddr().String(), c.id)
+	log.Infof("New connection from %s (%d)", c.conn.RemoteAddr().String(), c.id)
 	go c.readRoutine(&s.isShuttingDown, s.clientInBoundIPPackets)
 	go c.writeRoutine(&s.isShuttingDown)
 }
@@ -265,7 +273,7 @@ func (c *ServerConn) writeRoutine(isShuttingDown *bool) {
 			encoder.Encode(PacketIP)
 			err := encoder.Encode(pkt)
 			if err != nil {
-				log.Printf("Write error for %s: %s\n", c.conn.RemoteAddr().String(), err.Error())
+				log.Infof("Write error for %s: %s", c.conn.RemoteAddr().String(), err.Error())
 				c.hadError(false)
 				return
 			}
@@ -281,7 +289,7 @@ func (c *ServerConn) readRoutine(isShuttingDown *bool, ipPacketSink chan *Client
 		err := decoder.Decode(&PacketType)
 		if err != nil {
 			if !*isShuttingDown {
-				log.Printf("Client read error: %s\n", err.Error())
+				log.Infof("Client read error: %s", err.Error())
 			}
 			c.hadError(true)
 			return
@@ -292,7 +300,7 @@ func (c *ServerConn) readRoutine(isShuttingDown *bool, ipPacketSink chan *Client
 			var localAddr net.IP
 			err := decoder.Decode(&localAddr)
 			if err != nil {
-				log.Printf("Could not decode net.IP: %s", err.Error())
+				log.Infof("Could not decode net.IP: %s", err.Error())
 				c.hadError(false)
 				return
 			}
@@ -303,11 +311,11 @@ func (c *ServerConn) readRoutine(isShuttingDown *bool, ipPacketSink chan *Client
 			var ipPkt RawIPPacket
 			err := decoder.Decode(&ipPkt)
 			if err != nil {
-				log.Printf("Could not decode IPPacket: %s", err.Error())
+				log.Infof("Could not decode IPPacket: %s", err.Error())
 				c.hadError(false)
 				return
 			}
-			//log.Printf("Packet Received from %d: dest %s, len %d\n", c.id, ipPkt.Dest.String(), len(ipPkt.Raw))
+			//log.Infof("Packet Received from %d: dest %s, len %d", c.id, ipPkt.Dest.String(), len(ipPkt.Raw))
 			ipPacketSink <- &ClientInBoundIPPacket{packet: &ipPkt, clientID: c.id}
 		}
 	}
@@ -317,7 +325,7 @@ func (c *ServerConn) writeToClient(pkt *RawIPPacket) {
 	select {
 	case c.outBoundIPPacket <- pkt:
 	default:
-		log.Printf("Warning: Dropping packets for %s as outbound msg queue is full.\n", c.remoteAddressStr())
+		log.Infof("Warning: Dropping packets for %s as outbound msg queue is full.", c.remoteAddressStr())
 	}
 }
 
@@ -351,7 +359,7 @@ func tunReadRoutine(dev *water.Interface, packetsIn chan *RawIPPacket, wg *sync.
 		n, err := dev.Read(packet)
 		if err != nil {
 			if !*isShuttingDown {
-				log.Printf("%s read err: %s\n", dev.Name(), err.Error())
+				log.Infof("%s read err: %s", dev.Name(), err.Error())
 			}
 			close(packetsIn)
 			return
@@ -362,7 +370,7 @@ func tunReadRoutine(dev *water.Interface, packetsIn chan *RawIPPacket, wg *sync.
 			Protocol: waterutil.IPv4Protocol(packet[:n]),
 		}
 		packetsIn <- p
-		//log.Printf("Packet Received: dest %s, len %d\n", p.Dest.String(), len(p.Raw))
+		//log.Infof("Packet Received: dest %s, len %d", p.Dest.String(), len(p.Raw))
 	}
 }
 
@@ -374,11 +382,11 @@ func tunWriteRoutine(dev *water.Interface, packetsOut chan *RawIPPacket, wg *syn
 		pkt := <-packetsOut
 		w, err := dev.Write(pkt.Raw)
 		if err != nil {
-			log.Printf("Write to %s failed: %s\n", dev.Name(), err.Error())
+			log.Infof("Write to %s failed: %s", dev.Name(), err.Error())
 			return
 		}
 		if w != len(pkt.Raw) {
-			log.Printf("WARN: Write to %s has mismatched len: %d != %d\n", dev.Name(), w, len(pkt.Raw))
+			log.Infof("WARN: Write to %s has mismatched len: %d != %d", dev.Name(), w, len(pkt.Raw))
 		}
 	}
 }
