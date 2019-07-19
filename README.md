@@ -1,6 +1,6 @@
-# Fastvpn
+# FC
 
-fastvpn can be quickly to start and save your money.
+FC is a cheap VPN solution running on AWS, which quickly starts up and initializes the VPN service environment on AWS when using VPN, and pays according to the amount
 
 [![Build Status](https://travis-ci.org/Jamlee/fastvpn.svg?branch=master)](https://travis-ci.org/Jamlee/fastvpn)
 [![CodeFactor](https://www.codefactor.io/repository/github/jamlee/fastvpn/badge)](https://www.codefactor.io/repository/github/jamlee/fastvpn)
