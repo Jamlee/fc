@@ -1,6 +1,6 @@
 # FC
 
-FC is a cheap VPN solution running on AWS, which quickly starts up and initializes the VPN service environment on AWS when using VPN, and pays according to the amount
+FC is a cheap VPN solution running on AWS, which quickly starts up and initializes the VPN service environment on AWS when using VPN, and pays according to amount of usage
 
 [![Build Status](https://travis-ci.org/Jamlee/fastvpn.svg?branch=master)](https://travis-ci.org/Jamlee/fastvpn)
 [![CodeFactor](https://www.codefactor.io/repository/github/jamlee/fastvpn/badge)](https://www.codefactor.io/repository/github/jamlee/fastvpn)
@@ -12,8 +12,6 @@ FC is a cheap VPN solution running on AWS, which quickly starts up and initializ
 
 
 ## How Vpn work
-
-
 
 
 ## Usage
@@ -31,8 +29,6 @@ aws_secret_access_key = o397+vZrTSgVANAq323UkKTp/ckkOKFYQ8nONYQ1E   # your aws_s
 ### 2. start the vpn env
 
 run the command `fastvpn start`
-
-
 
 
 ## Change Logs
